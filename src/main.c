@@ -46,8 +46,8 @@ int main() {
     stdio_init_all();
 
     init_all();
-
-    menu_start_scene(&dp);
+    menu_initial_scene(1, &dp);
+    //menu_instruction_scene(1, 0, &dp);
     display_update(&dp);
     
     while(true) {

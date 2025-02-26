@@ -14,8 +14,11 @@ enum menu_stage {
 };
 
 extern const uint8_t seta_normal[120];
-void menu_initial_scene(display *dp);
-void menu_instruction_scene(display *dp);
+extern const uint8_t seta_cursor[120];
+extern const uint8_t seta_selecionada[120];
+
+void menu_initial_scene(uint8_t idx, display *dp);
+void menu_instruction_scene(uint8_t idx, bool selected, display *dp);
 void menu_in_execution_scene(display *dp);
 
 #endif
