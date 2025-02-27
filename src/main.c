@@ -45,6 +45,16 @@ void init_all() {
     display_init(&dp);
 }
 
+int constrain(int valor, int minimo, int maximo) {
+    if (valor < minimo) {
+        return minimo;
+    } else if (valor > maximo) {
+        return maximo;
+    } else {
+        return valor;
+    }
+}
+
 int16_t x_position = 0;
 int16_t y_position = 0;
 
@@ -52,6 +62,9 @@ uint8_t initial_index = 0;
 uint8_t direction_index = 0;
 
 bool selected = false;
+bool matrix_is_on = false;
+
+int8_t matrix_x, matrix_y;
 
 enum menu_stage menu_actual_stage = MENU_INITIAL;
 
@@ -62,11 +75,17 @@ int main() {
     init_all();
 
     while(true) {
-
+        matrix_x = 0, matrix_y = 0;
         x_position = joystick_read(JOYSTICK_X_PIN, 20, 400);
         y_position = joystick_read(JOYSTICK_Y_PIN, 20, 400);
         DEBUG(y_position);
         DEBUG(x_position);
+        if(menu_actual_stage != MENU_IN_EXECUTION && matrix_is_on) {
+            matrix_clear();
+            matrix_update();
+            matrix_is_on = false;
+        }
+
         switch(menu_actual_stage) {
 
             case MENU_INITIAL:
@@ -102,10 +121,77 @@ int main() {
             break;
 
             case MENU_IN_EXECUTION:
-                
-            break;
-        }
+                bool change = false;
+                matrix_is_on = true;
+                matrix_clear();
+                display_clear(&dp);
 
+                int center = 2;
+                int max_offset = 2;
+                
+                // Definir pontos de ativação baseados na faixa do joystick
+                int step1 = 40, step2 = 100, step3 = 160;
+
+                matrix_set_led_xy(center, center, COLOR_RGB(0, 3, 0)); // Ponto central (indivíduo)
+
+                int dx = 0, dy = 0;
+
+                if (x_position || y_position) {
+                    change = true;
+
+                    // Inverter a lógica: bordas -> centro
+                    if (x_position > step3) {
+                        dx = -max_offset;
+                    } else if (x_position > step2) {
+                        dx = -1;
+                    } else if (x_position < -step3) {
+                        dx = max_offset;
+                    } else if (x_position < -step2) {
+                        dx = 1;
+                    }
+
+                    if (y_position > step3) {
+                        dy = -max_offset;
+                    } else if (y_position > step2) {
+                        dy = -1;
+                    } else if (y_position < -step3) {
+                        dy = max_offset;
+                    } else if (y_position < -step2) {
+                        dy = 1;
+                    }
+
+                    // O efeito agora parte das bordas e vem ao centro
+                    matrix_x = center + dx;
+                    matrix_y = center + dy;
+                }
+
+                if (change) {
+                    uint abs_x = abs(x_position);
+                    uint abs_y = abs(y_position);
+                    matrix_set_led_xy(matrix_x, matrix_y, COLOR_RGB(3, 0, 0));
+                    if(abs_x > abs_y) {
+                        if (matrix_x == 0) {
+                            buzzer_beep(BUZZER_B_PIN, buzzer_direction[3], 300);
+                        } else if(matrix_x == 4) {
+                            buzzer_beep(BUZZER_B_PIN, buzzer_direction[1], 300);
+                        }
+                    } else {
+                        if (matrix_y == 0) {
+                            buzzer_beep(BUZZER_B_PIN, buzzer_direction[0], 300);
+                        } else if(matrix_y == 4) {
+                            buzzer_beep(BUZZER_B_PIN, buzzer_direction[2], 300);
+                        }
+                    }
+                }
+
+                
+                matrix_update();
+
+                break;
+
+
+        }
+        
         display_update(&dp);
         
         sleep_ms(30);
@@ -149,6 +235,8 @@ void button_callback(uint gpio, uint32_t events) {
             if (events & GPIO_IRQ_EDGE_FALL) {
                 buzzer_turn_off(BUZZER_B_PIN);
                 display_shutdown(&dp);
+                matrix_clear();
+                matrix_update();
                 reset_usb_boot(0, 0);
             }
         }
