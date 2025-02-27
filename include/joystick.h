@@ -9,8 +9,6 @@
 #define JOYSTICK_Y_PIN 26
 #define JOYSTICK_BUTTON_PIN 22
 
-#define DEADZONE 100
-
 void joystick_init(uint8_t pin_x, uint8_t pin_y);
 int16_t joystick_read(uint8_t pin, uint16_t deadzone, uint16_t limit);
 

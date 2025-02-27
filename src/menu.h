@@ -19,6 +19,6 @@ extern const uint8_t seta_selecionada[120];
 
 void menu_initial_scene(uint8_t idx, display *dp);
 void menu_instruction_scene(uint8_t idx, bool selected, display *dp);
-void menu_in_execution_scene(display *dp);
+void menu_in_execution_scene(uint8_t dx, uint8_t dy, display *dp);
 
 #endif

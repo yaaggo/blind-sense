@@ -36,24 +36,79 @@ void init_all() {
     button_init(BUTTON_B_PIN);
     button_init(JOYSTICK_BUTTON_PIN);
 
-    buzzer_init(BUZZER_A_PIN);
+    joystick_init(JOYSTICK_X_PIN, JOYSTICK_Y_PIN);
+    
+    buzzer_init(BUZZER_B_PIN);
+
+    matrix_init(MATRIX_LED_PIN);
 
     display_init(&dp);
-
 }
+
+int16_t x_position = 0;
+int16_t y_position = 0;
+
+uint8_t initial_index = 0;
+uint8_t direction_index = 0;
+
+bool selected = false;
+
+enum menu_stage menu_actual_stage = MENU_INITIAL;
+
+uint16_t buzzer_direction[] = {500, 1000, 1500, 2000};
 
 int main() {
     stdio_init_all();
-
     init_all();
-    menu_initial_scene(1, &dp);
-    //menu_instruction_scene(1, 0, &dp);
-    display_update(&dp);
-    
+
     while(true) {
 
-        sleep_ms(100);
+        x_position = joystick_read(JOYSTICK_X_PIN, 20, 400);
+        y_position = joystick_read(JOYSTICK_Y_PIN, 20, 400);
+        DEBUG(y_position);
+        DEBUG(x_position);
+        switch(menu_actual_stage) {
 
+            case MENU_INITIAL:
+                if(y_position > 60) {
+                    initial_index = initial_index ? 0 : 1;
+                    buzzer_beep(BUZZER_B_PIN, 100, 200);
+                } else if(y_position < -60) {
+                    initial_index = initial_index ? 0 : 1;
+                    buzzer_beep(BUZZER_B_PIN, 200, 200);
+                }
+
+                menu_initial_scene(initial_index, &dp);
+
+            break;
+
+            case MENU_INSTRUCTION:
+                if(x_position > 60) {
+                    direction_index = direction_index >= 3 ? 0 : direction_index + 1;
+                    buzzer_beep(BUZZER_B_PIN, 100, 200);
+                } else if(x_position < -60) {
+                    direction_index = direction_index <= 0 ? 3 : direction_index - 1;
+                    buzzer_beep(BUZZER_B_PIN, 100, 200);
+                }
+
+                if(selected) {
+                    menu_instruction_scene(direction_index, selected,&dp);
+                    display_update(&dp);
+                    buzzer_beep(BUZZER_B_PIN, buzzer_direction[direction_index], 400);
+                    selected = false;
+                }
+
+                menu_instruction_scene(direction_index, selected,&dp);
+            break;
+
+            case MENU_IN_EXECUTION:
+                
+            break;
+        }
+
+        display_update(&dp);
+        
+        sleep_ms(30);
     }
     
     return 0;
@@ -68,8 +123,15 @@ void button_callback(uint gpio, uint32_t events) {
             last_a_interrupt_time = current_time;
 
             if (events & GPIO_IRQ_EDGE_FALL) {
-                button_a_state = !button_a_state;
-                button_a_previous_state = !button_a_state;
+                if(menu_actual_stage == MENU_INITIAL) {
+                    if(initial_index == 0) {
+                        menu_actual_stage = MENU_IN_EXECUTION;
+                    } else {
+                        menu_actual_stage = MENU_INSTRUCTION;
+                    }
+                } else if (menu_actual_stage == MENU_INSTRUCTION) {
+                    selected = true;
+                }
             }
         }
     } else if (gpio == BUTTON_B_PIN) { // botao extra para entrar em modo bootsel
@@ -77,15 +139,17 @@ void button_callback(uint gpio, uint32_t events) {
             last_b_interrupt_time = current_time;
 
             if (events & GPIO_IRQ_EDGE_FALL) {   
-                reset_usb_boot(0, 0);
+                menu_actual_stage = MENU_INITIAL;
             }
         }
     } else if (gpio == JOYSTICK_BUTTON_PIN) { 
         if (current_time - last_joystick_interrupt_time > DEBOUNCE_DELAY) {
             last_joystick_interrupt_time = current_time;
 
-            if (events & GPIO_IRQ_EDGE_FALL) {   
-
+            if (events & GPIO_IRQ_EDGE_FALL) {
+                buzzer_turn_off(BUZZER_B_PIN);
+                display_shutdown(&dp);
+                reset_usb_boot(0, 0);
             }
         }
     }

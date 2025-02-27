@@ -66,3 +66,7 @@ void menu_initial_scene(uint8_t idx, display *dp) {
 		display_draw_rectangle(20, 40, 106, 54, false, true, dp);
 	}
 }
+
+void menu_in_execution_scene(uint8_t dx, uint8_t dy, display *dp) {
+
+}
